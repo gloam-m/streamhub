@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamHub</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0d12;
+  --surface: #16161e;
+  --surface2: #1e1e28;
+  --border: rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.18);
+  --text: #f0f0f8;
+  --muted: rgba(255,255,255,0.4);
+  --accent: #7c6aff;
+  --danger: #ff4757;
+  --radius: 20px;
+  --gap: 12px;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 20px 100px;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(rgba(124,106,255,0.055) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+header {
+  text-align: center;
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
+}
+header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+header h1 em { font-style: normal; color: var(--accent); }
+header p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-top: 5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.grid-wrap { position: relative; z-index: 1; width: 100%; max-width: 680px; }
+#card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--gap);
+  width: 100%;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16/10;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none;
+  transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), border-color 0.18s, box-shadow 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+.card:hover { transform: scale(1.04) translateY(-2px); border-color: var(--border-hover); box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+.card:active { transform: scale(0.97); }
+.card-logo-wrap {
+  width: 78%; max-width: 280px; height: 76px;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; user-select: none;
+  transition: transform 0.18s;
+}
+.card:hover .card-logo-wrap { transform: scale(1.06); }
+.card-logo-wrap svg { width: 100%; height: 100%; }
+.card-fallback {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.3rem; font-weight: 700;
+  color: #fff; letter-spacing: 0.03em;
+}
+body.editing .card {
+  cursor: default;
+  animation: wobble 0.55s ease-in-out infinite alternate;
+}
+body.editing .card:hover { transform: none; box-shadow: none; }
+@keyframes wobble {
+  from { transform: rotate(-0.7deg); }
+  to   { transform: rotate(0.7deg); }
+}
+.remove-badge {
+  display: none;
+  position: absolute;
+  top: 8px; left: 8px;
+  width: 26px; height: 26px;
+  background: var(--danger);
+  border-radius: 50%;
+  align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  z-index: 10;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  transition: transform 0.12s;
+  border: none;
+}
+.remove-badge:hover { transform: scale(1.18); }
+body.editing .remove-badge { display: flex; }
+.card-add {
+  background: transparent;
+  border: 1.5px dashed rgba(255,255,255,0.13);
+  border-radius: var(--radius);
+  aspect-ratio: 16/10;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.card-add:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,106,255,0.06); }
+.card-add .plus-icon { font-size: 26px; font-weight: 300; opacity: 0.5; transition: opacity 0.15s; line-height: 1; }
+.card-add:hover .plus-icon { opacity: 1; }
+body.editing .card-add { display: flex; }
+#toolbar {
+  position: fixed;
+  bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  gap: 10px;
+  background: rgba(20,20,28,0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.tool-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 18px;
+  border-radius: 40px; border: none;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.82rem; font-weight: 500;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, transform 0.1s;
+  white-space: nowrap;
+}
+.tool-btn:active { transform: scale(0.95); }
+#edit-btn { background: var(--surface2); color: var(--text); }
+#edit-btn:hover { background: #28283a; }
+#done-btn { background: var(--accent); color: #fff; display: none; }
+#done-btn:hover { background: #9180ff; }
+.tool-btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+#picker-panel {
+  position: fixed; inset: 0;
+  z-index: 200;
+  display: flex; align-items: flex-end;
+  pointer-events: none;
+}
+#picker-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+#picker-sheet {
+  position: relative;
+  width: 100%; max-width: 640px;
+  margin: 0 auto;
+  background: #18182200;
+  background: #18182280;
+  background: #191923;
+  border-radius: 24px 24px 0 0;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-bottom: none;
+  padding: 0 0 env(safe-area-inset-bottom, 24px);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  max-height: 74vh;
+  display: flex;
+  flex-direction: column;
+}
+#picker-panel.open { pointer-events: all; }
+#picker-panel.open #picker-backdrop { opacity: 1; }
+#picker-panel.open #picker-sheet { transform: translateY(0); }
+.sheet-handle {
+  width: 36px; height: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  margin: 14px auto 14px;
+  flex-shrink: 0;
+}
+.sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px 14px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.sheet-header h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.1rem; font-weight: 700;
+}
+.sheet-close {
+  background: var(--surface2); border: none;
+  width: 30px; height: 30px; border-radius: 50%;
+  color: var(--muted); font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.14s, color 0.14s;
+}
+.sheet-close:hover { background: #2a2a3a; color: #fff; }
+.services-scroll { overflow-y: auto; padding: 10px 12px 10px; flex: 1; }
+.services-scroll::-webkit-scrollbar { width: 4px; }
+.services-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+.service-list { display: flex; flex-direction: column; gap: 4px; }
+.svc-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.svc-row:hover { background: var(--surface2); }
+.svc-row.already-added { opacity: 0.3; pointer-events: none; }
+.svc-logo-wrap {
+  width: 56px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.svc-logo-wrap svg { width: 56px; height: 30px; }
+.svc-name { font-size: 0.9rem; font-weight: 500; flex: 1; }
+.svc-badge {
+  font-size: 0.68rem; font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgba(124,106,255,0.18);
+  color: var(--accent);
+  letter-spacing: 0.03em;
+}
+.svc-add-icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 300; color: var(--muted);
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.svc-row:hover .svc-add-icon { background: var(--accent); border-color: var(--accent); color: #fff; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>STREAM<em>HUB</em></h1>
+  <p>Click to launch &nbsp;·&nbsp; Edit to customize</p>
+</header>
+
+<div class="grid-wrap">
+  <div id="card-grid"></div>
+</div>
+
+<div id="toolbar">
+  <button class="tool-btn" id="edit-btn" onclick="enterEdit()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    Edit
+  </button>
+  <button class="tool-btn" id="done-btn" onclick="exitEdit()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    Done
+  </button>
+</div>
+
+<div id="picker-panel">
+  <div id="picker-backdrop" onclick="closePicker()"></div>
+  <div id="picker-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h3>Add a service</h3>
+      <button class="sheet-close" onclick="closePicker()">✕</button>
+    </div>
+    <div class="services-scroll">
+      <div class="service-list" id="service-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVICES = [
+  { id:'netflix',    name:'Netflix',      url:'https://www.netflix.com',       bg:'#141414',
+    logo:'https://www.freepnglogos.com/uploads/netflix-logo-0.png', small:true },
+  { id:'disneyplus', name:'Disney+',      url:'https://www.disneyplus.com',    bg:'#040b1c',
+    logo:'https://cdn.freebiesupply.com/logos/large/2x/disney-plus-logo-white.png' },
+  { id:'hulu',       name:'Hulu',         url:'https://www.hulu.com',          bg:'#0b1c12',
+    logo:'https://logos-world.net/wp-content/uploads/2020/11/Hulu-Logo.png' },
+  { id:'max',        name:'Max',          url:'https://www.max.com',           bg:'#000c28',
+    logo:'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fstatic.hbo.com%2F2025-06%2Fhbomax-logo-iridescent-white.png&f=1&nofb=1&ipt=a09ea37a44a82e93ee52e9d1e53a47df4eac8a2a260aa08642f8283663227afa' },
+  { id:'prime',      name:'Prime Video',  url:'https://www.primevideo.com',    bg:'#0e1720',
+    logo:'https://logos-world.net/wp-content/uploads/2021/02/Amazon-Prime-Video-Logo.png' },
+  { id:'appletv',    name:'Apple TV+',    url:'https://tv.apple.com',          bg:'#000',
+    logo:'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fcrystalpng.com%2Fwp-content%2Fuploads%2F2025%2F11%2Fapple-tv-logo.png&f=1&nofb=1&ipt=45e9a1d4e4c6515f41413cb84310a62e17a6ece05b67f881724f791ecec57f63' },
+  { id:'peacock',    name:'Peacock',      url:'https://www.peacocktv.com',     bg:'#0e0e14',
+    logo:'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.peacocktv.com%2Fsites%2Fpeacock%2Fthemes%2Fcustom%2Fpeacock%2Fimages%2Felements-logos-peacock-2-0%403x.png&f=1&nofb=1&ipt=dc9bb51415625789f8d93e0bfa5f04fe49dc50623eb9ee22f1ab525933e43c38', small:true },
+  { id:'paramount',  name:'Paramount+',  url:'https://www.paramountplus.com', bg:'#04122b',
+    logo:'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.pngmart.com%2Ffiles%2F23%2FParamount-Plus-Logo-PNG-Pic.png&f=1&nofb=1&ipt=1ec3f266df18d06b8387eb64927767ce5cec0512b3741ef57aa3cdfe66bc4f6f' },
+  { id:'youtube',    name:'YouTube',      url:'https://www.youtube.com',       bg:'#0f0f0f',
+    logo:'https://logos-world.net/wp-content/uploads/2020/04/YouTube-Logo.png' },
+  { id:'tubi',       name:'Tubi',         url:'https://tubitv.com',            bg:'#0d0d0d',
+    logo:'https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Flogos-world.net%2Fwp-content%2Fuploads%2F2024%2F02%2FTubi-Logo.png&f=1&nofb=1&ipt=331a7f3198ed32050ea0802b3eb2c34dfb295213316d68918cb6fc6306bb5356' },
+];
+
+const KEY = 'streamhub_v4';
+
+function loadSlots() {
+  try { const d = localStorage.getItem(KEY); if (d) return JSON.parse(d); } catch(e) {}
+  return ['netflix','disneyplus','hulu','prime'];
+}
+function saveSlots(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
+function getSvc(id) { return SERVICES.find(s => s.id === id); }
+function isEditing() { return document.body.classList.contains('editing'); }
+
+function renderGrid() {
+  const slots = loadSlots();
+  const grid = document.getElementById('card-grid');
+  grid.innerHTML = '';
+  slots.forEach((id, idx) => {
+    const svc = getSvc(id);
+    if (!svc) return;
+    const wrap = document.createElement('div');
+    wrap.style.position = 'relative';
+    const rm = document.createElement('button');
+    rm.className = 'remove-badge';
+    rm.textContent = '−';
+    rm.title = 'Remove ' + svc.name;
+    rm.onclick = (e) => {
+      e.stopPropagation(); e.preventDefault();
+      const s = loadSlots(); s.splice(idx, 1); saveSlots(s); renderGrid();
+    };
+    const a = document.createElement('a');
+    a.className = 'card';
+    a.href = svc.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.style.background = svc.bg || '#16161e';
+    const lw = document.createElement('div');
+    lw.className = 'card-logo-wrap';
+    const img = document.createElement('img');
+    img.src = svc.logo; img.alt = svc.name;
+    img.style.cssText = svc.small ? 'max-width:60%;max-height:60%;object-fit:contain;' : 'max-width:100%;max-height:100%;object-fit:contain;';
+    img.onerror = function() { this.style.display='none'; const fb=document.createElement('span'); fb.className='card-fallback'; fb.textContent=svc.name; lw.appendChild(fb); };
+    lw.appendChild(img);
+    a.appendChild(lw);
+    a.addEventListener('click', (e) => { if (isEditing()) e.preventDefault(); });
+    wrap.appendChild(rm);
+    wrap.appendChild(a);
+    grid.appendChild(wrap);
+  });
+  const add = document.createElement('button');
+  add.className = 'card-add';
+  add.innerHTML = '<span class="plus-icon">+</span><span>Add service</span>';
+  add.onclick = openPicker;
+  grid.appendChild(add);
+}
+
+function enterEdit() {
+  document.body.classList.add('editing');
+  document.getElementById('edit-btn').style.display = 'none';
+  document.getElementById('done-btn').style.display = 'flex';
+}
+function exitEdit() {
+  document.body.classList.remove('editing');
+  document.getElementById('edit-btn').style.display = 'flex';
+  document.getElementById('done-btn').style.display = 'none';
+  closePicker();
+}
+function openPicker() { renderServiceList(); document.getElementById('picker-panel').classList.add('open'); }
+function closePicker() { document.getElementById('picker-panel').classList.remove('open'); }
+
+function renderServiceList() {
+  const active = loadSlots();
+  const list = document.getElementById('service-list');
+  list.innerHTML = '';
+  SERVICES.forEach(svc => {
+    const added = active.includes(svc.id);
+    const row = document.createElement('div');
+    row.className = 'svc-row' + (added ? ' already-added' : '');
+    const lw = document.createElement('div');
+    lw.className = 'svc-logo-wrap';
+    const simg = document.createElement('img');
+    simg.src = svc.logo; simg.alt = svc.name;
+    simg.style.cssText = 'max-width:56px;max-height:28px;object-fit:contain;';
+    lw.appendChild(simg);
+    const nm = document.createElement('span');
+    nm.className = 'svc-name';
+    nm.textContent = svc.name;
+    const icon = document.createElement('div');
+    if (added) {
+      icon.className = 'svc-badge';
+      icon.textContent = 'Added';
+    } else {
+      icon.className = 'svc-add-icon';
+      icon.textContent = '+';
+      row.onclick = () => {
+        const s = loadSlots(); s.push(svc.id); saveSlots(s); renderGrid(); closePicker();
+      };
+    }
+    row.appendChild(lw);
+    row.appendChild(nm);
+    row.appendChild(icon);
+    list.appendChild(row);
+  });
+}
+
+renderGrid();
+</script>
+</body>
+</html>
